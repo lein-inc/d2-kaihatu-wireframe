@@ -68,13 +68,26 @@ section { padding: 64px 0; border-bottom: 1px solid #ccc; }
   border-bottom: 1px solid #ccc; background: #fff;
   padding: 20px 0;
 }
-.site-header .wrap { display: flex; align-items: center; justify-content: space-between; }
+.site-header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
 .site-logo {
   font-size: 18px; font-weight: 700; letter-spacing: 0.05em;
   border: 1px solid #333; padding: 8px 16px;
 }
+.header-right { display: flex; align-items: center; gap: 20px; }
 .gnav ul { display: flex; gap: 24px; font-size: 13px; }
 .gnav a { color: #333; }
+.tel-box {
+  border: 1px solid #333; padding: 8px 16px; text-align: right;
+  color: #111; text-decoration: none; line-height: 1.4;
+  min-width: 200px;
+}
+.tel-box:hover { background: #f5f5f5; text-decoration: none; }
+.tel-box .tel-label { font-size: 10px; color: #666; letter-spacing: 0.05em; margin-bottom: 2px; }
+.tel-box .tel-num {
+  font-size: 20px; font-weight: 700; color: #111;
+  font-family: "Helvetica Neue", monospace; letter-spacing: 0.02em;
+}
+.tel-box .tel-hours { font-size: 10px; color: #666; margin-top: 2px; }
 
 /* ============ Hero ============ */
 .hero {
@@ -338,4 +351,7 @@ section { padding: 64px 0; border-bottom: 1px solid #ccc; }
   .slide .body { font-size: 16px; }
   .hist-grid { grid-template-columns: 1fr; }
   .hist-cell { border-right: none !important; }
+  .tel-box { min-width: 0; padding: 6px 10px; }
+  .tel-box .tel-num { font-size: 15px; }
+  .tel-box .tel-label, .tel-box .tel-hours { display: none; }
 }
