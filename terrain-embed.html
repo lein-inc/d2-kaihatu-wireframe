@@ -12,7 +12,8 @@
     background: #ffffff;
     font-family: "Helvetica Neue", Arial, sans-serif;
   }
-  #canvas-wrap { position: fixed; inset: 0; }
+  #canvas-wrap { position: fixed; inset: 0; cursor: grab; touch-action: none; }
+  #canvas-wrap.dragging { cursor: grabbing; }
 </style>
 </head>
 <body>
@@ -186,12 +187,19 @@ function updateTerrain(time) {
   geometry.attributes.position.needsUpdate = true;
 }
 
+/* ============================================================
+   Camera state (orbital)
+============================================================ */
 const target = new THREE.Vector3(0, 26, -40);
 let theta = Math.PI * 0.02;
 let phi   = Math.PI * 0.408;
 let radius = 430;
+const PHI_MIN = Math.PI * 0.14, PHI_MAX = Math.PI * 0.49;
+const R_MIN = 160, R_MAX = 800;
 
 function applyCamera() {
+  phi = Math.min(PHI_MAX, Math.max(PHI_MIN, phi));
+  radius = Math.min(R_MAX, Math.max(R_MIN, radius));
   camera.position.set(
     target.x + radius * Math.sin(phi) * Math.sin(theta),
     target.y + radius * Math.cos(phi),
@@ -200,6 +208,79 @@ function applyCamera() {
   camera.lookAt(target);
 }
 
+/* ============================================================
+   Drag rotation
+============================================================ */
+const wrap2 = wrap;  // alias
+let dragging = false;
+let lastX = 0, lastY = 0;
+let interactCooldown = 0;  // seconds until auto animation resumes after user interaction
+
+wrap2.addEventListener('pointerdown', e => {
+  dragging = true;
+  lastX = e.clientX; lastY = e.clientY;
+  wrap2.classList.add('dragging');
+  try { wrap2.setPointerCapture(e.pointerId); } catch (_) {}
+});
+wrap2.addEventListener('pointermove', e => {
+  if (!dragging) return;
+  const dx = e.clientX - lastX, dy = e.clientY - lastY;
+  lastX = e.clientX; lastY = e.clientY;
+  theta -= dx * 0.005;
+  phi   -= dy * 0.004;
+  interactCooldown = 2.5;
+});
+function endDrag() {
+  if (!dragging) return;
+  dragging = false;
+  wrap2.classList.remove('dragging');
+  interactCooldown = 2.5;
+}
+wrap2.addEventListener('pointerup', endDrag);
+wrap2.addEventListener('pointercancel', endDrag);
+wrap2.addEventListener('pointerleave', endDrag);
+
+// Wheel zoom (bonus)
+wrap2.addEventListener('wheel', e => {
+  e.preventDefault();
+  radius *= 1 + Math.sign(e.deltaY) * 0.08;
+  interactCooldown = 2.5;
+}, { passive: false });
+
+/* ============================================================
+   Auto animation: 0.3s のランダム "グリット回転＋サイズ変化"
+                   → 2s の holdフェーズ（緩やかな自動回転）
+                   → 繰り返し
+============================================================ */
+const GRIT_DUR = 0.3;
+const HOLD_DUR = 2.0;
+
+let mode = 'hold';   // 'grit' | 'hold'
+let modeT = 0;
+
+let thetaStart, thetaEnd;
+let phiStart, phiEnd;
+let radiusStart, radiusEnd;
+
+function startGrit() {
+  mode = 'grit'; modeT = 0;
+  thetaStart = theta;
+  phiStart = phi;
+  radiusStart = radius;
+  // ランダムな新姿勢を選ぶ（大きめの回転＋サイズ変化）
+  thetaEnd  = theta + (Math.random() - 0.5) * Math.PI * 1.6;   // ±約143°
+  phiEnd    = PHI_MIN + Math.random() * (PHI_MAX - PHI_MIN) * 0.85;
+  radiusEnd = 220 + Math.random() * 480;
+}
+function startHold() {
+  mode = 'hold'; modeT = 0;
+}
+
+const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
+
+/* ============================================================
+   Loop
+============================================================ */
 let simTime = 0;
 let prev = performance.now();
 
@@ -211,8 +292,27 @@ function animate(now) {
   simTime += dt;
   updateTerrain(simTime);
 
-  // ゆっくり自動回転
-  theta += dt * 0.06;
+  if (dragging) {
+    // 手動操作中：自動アニメは停止
+  } else if (interactCooldown > 0) {
+    interactCooldown = Math.max(0, interactCooldown - dt);
+    if (interactCooldown === 0) startHold();
+  } else {
+    // Auto phase
+    modeT += dt;
+    if (mode === 'grit') {
+      const t = Math.min(1, modeT / GRIT_DUR);
+      const e = easeOutCubic(t);
+      theta  = thetaStart  + (thetaEnd  - thetaStart)  * e;
+      phi    = phiStart    + (phiEnd    - phiStart)    * e;
+      radius = radiusStart + (radiusEnd - radiusStart) * e;
+      if (modeT >= GRIT_DUR) startHold();
+    } else {
+      // hold：ゆるやかな自動回転で"生きてる感"
+      theta += dt * 0.06;
+      if (modeT >= HOLD_DUR) startGrit();
+    }
+  }
 
   applyCamera();
   renderer.render(scene, camera);
