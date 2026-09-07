@@ -27,7 +27,7 @@
 </script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ヒーロー［技術者案］ | 株式会社第二開発技工（WF）</title>
+<title>ヒーロー［インフラ案］ | 株式会社第二開発技工（WF）</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
@@ -43,46 +43,33 @@
     background:#fff; color:#222;
     font-family:"Noto Sans JP","Inter",sans-serif;
     overflow-x: hidden;
-    cursor: none;   /* デフォルトカーソル非表示（カスタム●カーソル使用） */
+    cursor: none;
   }
-  a, button, .site-header .gnav a { cursor: none; }
-
-  /* ====== カスタム●カーソル ====== */
+  a, button { cursor: none; }
   .cursor-dot {
     position: fixed; top: 0; left: 0;
     width: 12px; height: 12px;
-    background: #ffffff;
-    border: 1px solid rgba(0,0,0,0.15);
+    background: #ffffff; border: 1px solid rgba(0,0,0,0.15);
     border-radius: 50%;
-    pointer-events: none;
-    z-index: 9999;
+    pointer-events: none; z-index: 9999;
     transform: translate(-50%, -50%);
-    transition: width .18s ease, height .18s ease, background .18s ease;
+    transition: width .18s ease, height .18s ease;
     mix-blend-mode: difference;
-    will-change: transform;
   }
-  .cursor-dot.hover {
-    width: 32px; height: 32px;
-    background: #ffffff;
-  }
-  /* クリック時のリップル */
+  .cursor-dot.hover { width: 32px; height: 32px; }
   .cursor-ripple {
-    position: fixed;
-    border-radius: 50%;
-    pointer-events: none;
-    z-index: 9998;
+    position: fixed; border-radius: 50%;
+    pointer-events: none; z-index: 9998;
     transform: translate(-50%, -50%);
-    background: transparent;
     border: 2px solid var(--brand-primary);
     animation: rippleOut 0.6s cubic-bezier(.15,.7,.25,1) forwards;
     mix-blend-mode: multiply;
   }
   @keyframes rippleOut {
     0%   { width: 0;    height: 0;    opacity: 1;   border-width: 3px; }
-    60%  { opacity: 0.7; }
+    60%  { opacity: .7; }
     100% { width: 320px; height: 320px; opacity: 0; border-width: 1px; }
   }
-  /* タッチ端末は既定カーソルに戻す */
   @media (hover: none) {
     body, a, button { cursor: auto; }
     .cursor-dot, .cursor-ripple { display: none; }
@@ -110,40 +97,17 @@
   .site-header .gnav a { color:#222; text-decoration:none; font-size:13px; font-weight:500; }
   .site-header .gnav a:hover { color:var(--brand-primary); }
 
-  /* ====== ヒーローステージ：技術者写真スライドショー（丸ワイプ） ====== */
+  /* ====== ヒーローステージ：3Dワイヤー地形（iframe） ====== */
   .stage {
     position:relative;
     width:100vw; height:100vh;
     overflow:hidden;
-    background: var(--brand-primary);   /* ベースはブルー */
+    background:#fff;
   }
-  .stage .photo {
+  .terrain-iframe {
     position:absolute; inset:0;
-    background-position: 50% 55%;
-    background-size: cover;
-    background-repeat: no-repeat;
-    background-color: var(--brand-primary);
-    clip-path: circle(0% at 50% 50%);
-    animation: photoReveal 20s linear infinite;
-    animation-fill-mode: both;
-  }
-  .stage .p1 { background-image: url("img/eng1_sky.jpg?v=engineer"); z-index:1; animation-delay:1.6s; }
-  .stage .p2 { background-image: url("img/eng2_mountain.jpg?v=engineer"); z-index:2; animation-delay:6.6s; }
-  .stage .p3 { background-image: url("img/eng3_city.jpg?v=engineer"); z-index:3; animation-delay:11.6s; }
-  .stage .p4 { background-image: url("img/eng4_construction.jpg?v=engineer"); z-index:4; animation-delay:16.6s; }
-
-  /* 各写真：0.8s で center から丸ワイプ展開 → 3.4s 保持 → 0.8s 閉じる */
-  @keyframes photoReveal {
-    0%   { clip-path: circle(0% at 50% 50%); }
-    4%   { clip-path: circle(85% at 50% 50%); }  /* 0.8s で全画面 */
-    21%  { clip-path: circle(85% at 50% 50%); }  /* 4.2s まで保持 */
-    25%  { clip-path: circle(0% at 50% 50%); }   /* 5s で閉じる */
-    100% { clip-path: circle(0% at 50% 50%); }
-  }
-
-  /* 開いてる時にゆっくりズームで動きを付ける */
-  .stage .photo::before {
-    /* 疑似要素は clip-path が親で効くので不要。 background-sizeを大きめにして transitionで動かすなら別実装 */
+    width:100%; height:100%;
+    border:0; display:block;
   }
   /* 左上コピー */
   .hero-copy {
@@ -159,12 +123,12 @@
   }
   .hero-copy h1 {
     font-weight:900; font-size:52px; line-height:1.45;
-    color: #ffffff; letter-spacing:0.03em;
+    color: var(--brand-primary); letter-spacing:0.03em;
     min-height: 1.45em;
   }
   .hero-copy .cursor {
     display: inline-block; margin-left: 4px;
-    color: #ffffff;
+    color: var(--brand-primary);
     font-weight: 400;
     animation: blink 0.8s step-end infinite;
   }
@@ -251,7 +215,7 @@
 <body>
 
 <div class="wf-banner">
-  <span>WIREFRAME | HERO ［技術者案］ | /hero-engineer.html</span>
+  <span>WIREFRAME | HERO ［インフラ案：3D地形 × 高速道路］ | /hero-infra.html</span>
   <a href="index.html">← 一覧に戻る</a>
 </div>
 
@@ -269,13 +233,9 @@
   </ul></nav>
 </header>
 
-<!-- ============ ヒーロー：技術者スライドショー（丸ワイプで写真切替） ============ -->
+<!-- ============ ヒーロー：3Dワイヤー地形（Three.js） ============ -->
 <div class="stage">
-  <!-- Blue base（<body>のstage bgで既に描画） -->
-  <div class="photo p1"></div>
-  <div class="photo p2"></div>
-  <div class="photo p3"></div>
-  <div class="photo p4"></div>
+  <iframe class="terrain-iframe" src="terrain-infra-embed.html" title="3D wireframe terrain"></iframe>
   <div class="hero-copy">
     <span class="en-label">— DAINI KAIHATSU GIKO</span>
     <h1><span class="typed"></span><span class="cursor">|</span></h1>
@@ -286,8 +246,8 @@
 /* タイプライター演出（日→英→日→英… ループ） */
 (function () {
   var messages = [
-    { text: 'はかる技術で、\nまちの未来をかたちにする。', hold: 2800 },
-    { text: 'Measuring the ground.\nShaping the future.',      hold: 2800 }
+    { text: '測る技術で\n未来に残す', hold: 2800 },
+    { text: 'Surveying the ground.\nPreserving the future.',   hold: 2800 }
   ];
   var typed = document.querySelector('.hero-copy .typed');
   if (!typed) return;
@@ -336,8 +296,8 @@
 <!-- ============ セクション1：ブルー背景のコピー ============ -->
 <section class="copy-section">
   <span class="en-label">— OUR PROMISE</span>
-  <h2>はかる技術で、<br>まちの未来をかたちにする。</h2>
-  <p>公共測量・工事測量から3次元計測まで。<br>岡山・倉敷から全国の現場を支える、測量・調査・施工管理のプロフェッショナル。</p>
+  <h2>測る技術で未来に残す</h2>
+  <p>どこへでも行く。未来へも行く。<br>1981年の創業から変わらないフットワークで、道路・橋・河川——日本の社会基盤を測り、未来に残していく。</p>
 </section>
 
 <!-- ============ セクション2：カラーパレット（Mondrian・無テキスト） ============ -->
@@ -365,39 +325,20 @@
   <img src="img/logo.png" alt="株式会社第二開発技工">
 </section>
 
-<!-- ====== カスタム●カーソル ====== -->
 <div class="cursor-dot" aria-hidden="true"></div>
 <script>
 (function () {
   var dot = document.querySelector('.cursor-dot');
   if (!dot) return;
-  var x = 0, y = 0, tx = 0, ty = 0;
-  window.addEventListener('mousemove', function (e) {
-    tx = e.clientX; ty = e.clientY;
-  });
-  // インタラクティブ要素上でドット拡大
-  document.addEventListener('mouseover', function (e) {
-    if (e.target.closest('a, button, .site-header .gnav a, iframe')) dot.classList.add('hover');
-  });
-  document.addEventListener('mouseout', function (e) {
-    if (e.target.closest('a, button, .site-header .gnav a, iframe')) dot.classList.remove('hover');
-  });
-  // 追従（イージング）
-  function tick () {
-    x += (tx - x) * 0.28;
-    y += (ty - y) * 0.28;
-    dot.style.transform = 'translate(' + x + 'px, ' + y + 'px) translate(-50%, -50%)';
-    requestAnimationFrame(tick);
-  }
-  requestAnimationFrame(tick);
-  // クリック時のリップル
-  window.addEventListener('click', function (e) {
-    var r = document.createElement('div');
-    r.className = 'cursor-ripple';
-    r.style.left = e.clientX + 'px';
-    r.style.top  = e.clientY + 'px';
-    document.body.appendChild(r);
-    setTimeout(function () { r.remove(); }, 700);
+  var x=0,y=0,tx=0,ty=0;
+  window.addEventListener('mousemove', function(e){ tx=e.clientX; ty=e.clientY; });
+  document.addEventListener('mouseover', function(e){ if(e.target.closest('a,button,iframe')) dot.classList.add('hover'); });
+  document.addEventListener('mouseout',  function(e){ if(e.target.closest('a,button,iframe')) dot.classList.remove('hover'); });
+  (function tick(){ x += (tx-x)*0.28; y += (ty-y)*0.28; dot.style.transform='translate('+x+'px,'+y+'px) translate(-50%,-50%)'; requestAnimationFrame(tick); })();
+  window.addEventListener('click', function(e){
+    var r=document.createElement('div'); r.className='cursor-ripple';
+    r.style.left=e.clientX+'px'; r.style.top=e.clientY+'px';
+    document.body.appendChild(r); setTimeout(function(){ r.remove(); }, 700);
   });
 })();
 </script>
