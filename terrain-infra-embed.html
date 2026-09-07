@@ -227,6 +227,143 @@ const ROAD_TOTAL_VERTS = roadPos.length / 3;
 roadGeometry.setDrawRange(0, 0);
 let roadT = -0.8;
 
+/* ============================================================
+   City（都市）: ワイヤーフレームのビル群（平野部）
+============================================================ */
+const cityPos = [];
+function pushCitySeg(x1,y1,z1,x2,y2,z2){ cityPos.push(x1,y1,z1,x2,y2,z2); }
+function boxEdges(cx, cz, w, d, h, yb) {
+  const x0 = cx - w/2, x1 = cx + w/2, z0 = cz - d/2, z1 = cz + d/2, yt = yb + h;
+  // 底辺4
+  pushCitySeg(x0,yb,z0, x1,yb,z0); pushCitySeg(x1,yb,z0, x1,yb,z1);
+  pushCitySeg(x1,yb,z1, x0,yb,z1); pushCitySeg(x0,yb,z1, x0,yb,z0);
+  // 上辺4
+  pushCitySeg(x0,yt,z0, x1,yt,z0); pushCitySeg(x1,yt,z0, x1,yt,z1);
+  pushCitySeg(x1,yt,z1, x0,yt,z1); pushCitySeg(x0,yt,z1, x0,yt,z0);
+  // 柱4
+  pushCitySeg(x0,yb,z0, x0,yt,z0); pushCitySeg(x1,yb,z0, x1,yt,z0);
+  pushCitySeg(x1,yb,z1, x1,yt,z1); pushCitySeg(x0,yb,z1, x0,yt,z1);
+  // フロアライン（高層のみ）
+  if (h > 40) {
+    for (let fy = yb + 14; fy < yt - 6; fy += 14) {
+      pushCitySeg(x0,fy,z0, x1,fy,z0); pushCitySeg(x0,fy,z1, x1,fy,z1);
+    }
+  }
+}
+(function buildCity(){
+  let s = 98765;
+  const rand = () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296;
+  for (let b = 0; b < 30; b++) {
+    const cx = -160 + (rand() - 0.5) * 200;
+    const cz = 170 + (rand() - 0.5) * 180;
+    const w = 9 + rand() * 15, d = 9 + rand() * 15;
+    const h = 22 + Math.pow(rand(), 1.7) * 60;
+    const yb = heightAt(cx, cz, 0) - 6;
+    boxEdges(cx, cz, w, d, h, yb);
+  }
+  // ランドマークタワー（アンテナ付き）
+  const tx = -150, tz = 160, tyb = heightAt(tx, tz, 0) - 6;
+  boxEdges(tx, tz, 16, 16, 92, tyb);
+  pushCitySeg(tx, tyb + 92, tz, tx, tyb + 112, tz);
+})();
+const cityGeometry = new THREE.BufferGeometry();
+cityGeometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(cityPos), 3));
+const cityMaterial = new THREE.LineBasicMaterial({ color: 0x013D6A, transparent: true, opacity: 0.85 });
+scene.add(new THREE.LineSegments(cityGeometry, cityMaterial));
+const CITY_TOTAL_VERTS = cityPos.length / 3;
+cityGeometry.setDrawRange(0, 0);
+let cityT = -1.6;
+
+/* ============================================================
+   River（川）: 地形高さに毎フレーム追従する蛇行ライン
+============================================================ */
+const RIVER_SEG = 110, RIVER_HALF = 11;
+function riverX(z) { return 130 + Math.sin(z * 0.006) * 55 + Math.sin(z * 0.017) * 18; }
+// セグメント構成: 左岸110 + 右岸110 + 波紋(6ごと) — 毎フレーム座標を再計算
+const riverSlots = [];
+for (let i = 0; i < RIVER_SEG; i++) { riverSlots.push(['L', i]); riverSlots.push(['R', i]); if (i % 6 === 3) riverSlots.push(['C', i]); }
+const riverArr = new Float32Array(riverSlots.length * 6);
+const riverGeometry = new THREE.BufferGeometry();
+riverGeometry.setAttribute('position', new THREE.BufferAttribute(riverArr, 3));
+const riverMaterial = new THREE.LineBasicMaterial({ color: 0x2E9080, transparent: true, opacity: 1.0 });
+scene.add(new THREE.LineSegments(riverGeometry, riverMaterial));
+function riverPoint(i, side, time) {
+  const z = (0.5 - i / RIVER_SEG) * SIZE * 0.98 * -1;  // 手前(+z)→奥(-z)
+  const zc = -z;
+  const x = riverX(zc);
+  const x2 = riverX(zc + 4);
+  let dx = x2 - x, dz = 4;
+  const len = Math.hypot(dx, dz);
+  const px = -dz / len * RIVER_HALF, pz = dx / len * RIVER_HALF;
+  const sx = side === 'L' ? x + px : side === 'R' ? x - px : x;
+  const sz = side === 'L' ? zc + pz : side === 'R' ? zc - pz : zc;
+  return [sx, heightAt(sx, sz, time) + 0.8, sz];
+}
+function updateRiver(time) {
+  let p = 0;
+  for (const [side, i] of riverSlots) {
+    if (side === 'C') {
+      const a = riverPoint(i, 'L', time), b = riverPoint(i, 'R', time);
+      riverArr[p++]=a[0]; riverArr[p++]=a[1]; riverArr[p++]=a[2];
+      riverArr[p++]=b[0]; riverArr[p++]=b[1]; riverArr[p++]=b[2];
+    } else {
+      const a = riverPoint(i, side, time), b = riverPoint(i + 1, side, time);
+      riverArr[p++]=a[0]; riverArr[p++]=a[1]; riverArr[p++]=a[2];
+      riverArr[p++]=b[0]; riverArr[p++]=b[1]; riverArr[p++]=b[2];
+    }
+  }
+  riverGeometry.attributes.position.needsUpdate = true;
+}
+const RIVER_TOTAL_VERTS = riverSlots.length * 2;
+riverGeometry.setDrawRange(0, 0);
+let riverT = -2.2;
+
+/* ============================================================
+   Bridge（トラス橋）: 川を渡る橋（手前側）
+============================================================ */
+const bridgePos = [];
+function pushBrSeg(x1,y1,z1,x2,y2,z2){ bridgePos.push(x1,y1,z1,x2,y2,z2); }
+(function buildBridge(){
+  const bz = 230;
+  const bx = riverX(bz);
+  const halfSpan = 58, deckHalfW = 6, trussH = 15;
+  const yg0 = heightAt(bx - halfSpan, bz, 0), yg1 = heightAt(bx + halfSpan, bz, 0);
+  const deckY = Math.max(yg0, yg1) + 9;
+  const N = 8, step = (halfSpan * 2) / N;
+  for (const zoff of [-deckHalfW, deckHalfW]) {
+    const z = bz + zoff;
+    // デッキ・上弦
+    pushBrSeg(bx - halfSpan, deckY, z, bx + halfSpan, deckY, z);
+    pushBrSeg(bx - halfSpan, deckY, z, bx - halfSpan + step, deckY + trussH, z);  // 端斜材
+    pushBrSeg(bx + halfSpan, deckY, z, bx + halfSpan - step, deckY + trussH, z);
+    pushBrSeg(bx - halfSpan + step, deckY + trussH, z, bx + halfSpan - step, deckY + trussH, z);
+    // 垂直材＋斜材（ジグザグ）
+    for (let i = 1; i < N; i++) {
+      const x = bx - halfSpan + i * step;
+      pushBrSeg(x, deckY, z, x, deckY + trussH, z);
+      const nx = bx - halfSpan + (i + (i < N/2 ? 1 : -1)) * step;
+      if (i !== N/2) pushBrSeg(x, deckY, z, nx, deckY + trussH, z);
+    }
+  }
+  // 上弦つなぎ＋橋台
+  for (let i = 1; i < N; i++) {
+    const x = bx - halfSpan + i * step;
+    pushBrSeg(x, deckY + trussH, bz - deckHalfW, x, deckY + trussH, bz + deckHalfW);
+  }
+  for (const xe of [bx - halfSpan, bx + halfSpan]) {
+    for (const zoff of [-deckHalfW, deckHalfW]) {
+      pushBrSeg(xe, deckY, bz + zoff, xe, heightAt(xe, bz + zoff, 0) - 12, bz + zoff);
+    }
+  }
+})();
+const bridgeGeometry = new THREE.BufferGeometry();
+bridgeGeometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(bridgePos), 3));
+const bridgeMaterial = new THREE.LineBasicMaterial({ color: 0x013D6A, transparent: true, opacity: 0.95 });
+scene.add(new THREE.LineSegments(bridgeGeometry, bridgeMaterial));
+const BRIDGE_TOTAL_VERTS = bridgePos.length / 3;
+bridgeGeometry.setDrawRange(0, 0);
+let bridgeT = -2.8;
+
 function updateTerrain(time) {
   const pos = geometry.attributes.position.array;
   let p = 0;
@@ -353,6 +490,25 @@ function animate(now) {
     const e = 1 - Math.pow(1 - t, 3);
     roadGeometry.setDrawRange(0, Math.floor(ROAD_TOTAL_VERTS * e / 2) * 2);
   }
+  if (cityT < 2.0) {
+    cityT += dt;
+    const t = Math.min(1, Math.max(0, cityT / 2.0));
+    const e = 1 - Math.pow(1 - t, 3);
+    cityGeometry.setDrawRange(0, Math.floor(CITY_TOTAL_VERTS * e / 2) * 2);
+  }
+  if (riverT < 2.0) {
+    riverT += dt;
+    const t = Math.min(1, Math.max(0, riverT / 2.0));
+    const e = 1 - Math.pow(1 - t, 3);
+    riverGeometry.setDrawRange(0, Math.floor(RIVER_TOTAL_VERTS * e / 2) * 2);
+  }
+  if (bridgeT < 1.6) {
+    bridgeT += dt;
+    const t = Math.min(1, Math.max(0, bridgeT / 1.6));
+    const e = 1 - Math.pow(1 - t, 3);
+    bridgeGeometry.setDrawRange(0, Math.floor(BRIDGE_TOTAL_VERTS * e / 2) * 2);
+  }
+  updateRiver(simTime);
 
   if (dragging) {
     // 手動操作中：自動アニメは停止
